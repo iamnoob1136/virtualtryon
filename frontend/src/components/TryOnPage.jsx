@@ -291,13 +291,13 @@ const TryOnPage = () => {
                 {inputType === "url" ? (
                   <div className="space-y-2">
                     <Input
-                      placeholder="https://store.com/product/shirt"
+                      placeholder="https://www.uniqlo.com/us/en/products/E467024-000/00"
                       value={clothingInput}
                       onChange={(e) => setClothingInput(e.target.value)}
                       className="w-full"
                     />
                     <p className="text-sm text-gray-500">
-                      Paste a link to any clothing product from an online store
+                      Paste a link to any clothing product. Works best with: Uniqlo, Target, Walmart. If it doesn't work, try uploading the image directly.
                     </p>
                   </div>
                 ) : (
