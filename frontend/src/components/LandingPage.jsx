@@ -3,6 +3,7 @@ import { ArrowRight, Smartphone, Share2, ShoppingBag, Star, Download, Play } fro
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { mockData } from "../mock";
+import { useNavigate } from "react-router-dom";
 
 const LandingPage = () => {
   const [activeStep, setActiveStep] = useState(1);
