@@ -121,39 +121,140 @@ def convert_image_to_base64(image_url: str) -> str:
 async def scrape_clothing_images(url: str) -> List[dict]:
     """Scrape clothing images from a product URL"""
     try:
-        response = requests.get(url, timeout=10)
+        # Better headers to avoid being blocked
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1'
+        }
+        
+        response = requests.get(url, timeout=15, headers=headers, allow_redirects=True)
         response.raise_for_status()
         
         soup = BeautifulSoup(response.content, 'html.parser')
         images = []
         
-        # Look for common clothing image selectors
-        img_tags = soup.find_all('img', {'class': ['product-image', 'item-image']}) or \
-                  soup.find_all('img', src=lambda x: x and any(keyword in x.lower() for keyword in ['product', 'item', 'clothing', 'shirt', 'dress']))
+        # Enhanced selectors for different clothing sites
+        selectors = [
+            # Generic product image selectors
+            'img[class*="product"]',
+            'img[class*="item"]', 
+            'img[class*="main"]',
+            'img[class*="hero"]',
+            'img[id*="product"]',
+            'img[id*="main"]',
+            # Common e-commerce platforms
+            'img[class*="gallery"]',
+            'img[class*="zoom"]',
+            'img[class*="thumbnail"]',
+            'img[data-testid*="product"]',
+            'img[data-cy*="product"]',
+            # Fallback - all images in product containers
+            '.product img',
+            '.item img',
+            '.gallery img',
+            '[class*="product"] img',
+            '[class*="item"] img'
+        ]
         
-        # If specific selectors don't work, get all images
-        if not img_tags:
-            img_tags = soup.find_all('img')
+        found_images = set()  # Use set to avoid duplicates
         
-        for img in img_tags[:5]:  # Limit to first 5 images
-            src = img.get('src') or img.get('data-src')
-            if src:
-                if src.startswith('//'):
-                    src = 'https:' + src
-                elif src.startswith('/'):
-                    from urllib.parse import urljoin
-                    src = urljoin(url, src)
-                
-                if src.startswith('http'):
-                    images.append({
-                        'url': src,
-                        'alt': img.get('alt', 'Clothing item')
-                    })
+        # Try each selector
+        for selector in selectors:
+            try:
+                img_tags = soup.select(selector)
+                for img in img_tags[:3]:  # Limit per selector
+                    src = img.get('src') or img.get('data-src') or img.get('data-lazy-src') or img.get('data-original')
+                    if src and src not in found_images:
+                        # Clean up the URL
+                        if src.startswith('//'):
+                            src = 'https:' + src
+                        elif src.startswith('/'):
+                            from urllib.parse import urljoin
+                            src = urljoin(url, src)
+                        
+                        # Check if it's likely a product image
+                        if (src.startswith('http') and 
+                            any(keyword in src.lower() for keyword in ['product', 'item', 'clothing', 'fashion', 'model']) and
+                            any(ext in src.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp'])):
+                            
+                            images.append({
+                                'url': src,
+                                'alt': img.get('alt', 'Clothing item')
+                            })
+                            found_images.add(src)
+                            
+                if len(images) >= 3:  # Stop if we have enough images
+                    break
+            except Exception as e:
+                logger.debug(f"Selector {selector} failed: {e}")
+                continue
         
+        # If no specific selectors worked, try a broader approach
+        if not images:
+            all_imgs = soup.find_all('img')
+            for img in all_imgs:
+                src = img.get('src') or img.get('data-src') or img.get('data-lazy-src')
+                if src and src not in found_images:
+                    if src.startswith('//'):
+                        src = 'https:' + src
+                    elif src.startswith('/'):
+                        from urllib.parse import urljoin
+                        src = urljoin(url, src)
+                    
+                    # Filter for likely product images
+                    if (src.startswith('http') and 
+                        any(ext in src.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp']) and
+                        not any(skip in src.lower() for skip in ['logo', 'icon', 'social', 'footer', 'header', 'nav'])):
+                        
+                        images.append({
+                            'url': src,
+                            'alt': img.get('alt', 'Clothing item')
+                        })
+                        found_images.add(src)
+                        
+                        if len(images) >= 5:  # Get more images with broad approach
+                            break
+        
+        if not images:
+            # Last resort: try to find any reasonable looking images
+            all_imgs = soup.find_all('img')
+            for img in all_imgs[:10]:  # Check first 10 images
+                src = img.get('src') or img.get('data-src')
+                if src:
+                    if src.startswith('//'):
+                        src = 'https:' + src
+                    elif src.startswith('/'):
+                        from urllib.parse import urljoin
+                        src = urljoin(url, src)
+                    
+                    if src.startswith('http') and any(ext in src.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp']):
+                        images.append({
+                            'url': src,
+                            'alt': img.get('alt', 'Image from page')
+                        })
+                        if len(images) >= 2:
+                            break
+        
+        logger.info(f"Found {len(images)} images from {url}")
         return images
+        
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Request error scraping {url}: {e}")
+        # Return a helpful error message instead of raising
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Unable to access the website. This could be due to the site blocking automated requests. Try using a direct image upload instead."
+        )
     except Exception as e:
-        logger.error(f"Error scraping clothing images: {e}")
-        raise HTTPException(status_code=400, detail=f"Failed to scrape images from URL: {str(e)}")
+        logger.error(f"Error scraping clothing images from {url}: {e}")
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Failed to extract images from the webpage. Try using a direct image upload instead."
+        )
 
 async def generate_virtual_tryon(person_image_b64: str, clothing_image_b64: str) -> str:
     """Generate virtual try-on using Gemini AI"""
