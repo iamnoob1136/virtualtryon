@@ -119,9 +119,26 @@ const TryOnPage = () => {
       }
     } catch (error) {
       console.error("Generation error:", error);
+      
+      let errorMessage = "Failed to generate virtual try-on. Please try again.";
+      
+      // Provide specific error messages based on the error
+      if (error.response?.status === 400) {
+        const detail = error.response?.data?.detail || "";
+        if (detail.includes("clothing images found")) {
+          errorMessage = "Could not find clothing images at this URL. Try:\n• Using a direct product page URL\n• Uploading the clothing image directly\n• Using a different retailer's website";
+        } else if (detail.includes("blocking")) {
+          errorMessage = "This website is blocking our requests. Please:\n• Upload the clothing image directly instead\n• Try a different product URL";
+        } else if (detail.includes("Invalid")) {
+          errorMessage = "Invalid image format. Please upload a clear JPG or PNG image.";
+        } else {
+          errorMessage = detail || errorMessage;
+        }
+      }
+      
       toast({
         title: "Generation failed",
-        description: error.response?.data?.detail || "Failed to generate virtual try-on. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
