@@ -248,7 +248,7 @@ const LandingPage = () => {
               <Button 
                 size="lg" 
                 className="bg-black hover:bg-gray-800 text-white px-8 py-4 text-lg font-semibold rounded-full transition-all duration-300 transform hover:scale-105"
-                onClick={() => window.location.href = '/tryon'}
+                onClick={() => navigate('/tryon')}
               >
                 <Download className="mr-2 h-5 w-5" />
                 Try It Now
