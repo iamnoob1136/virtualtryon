@@ -57,9 +57,10 @@ const LandingPage = () => {
                 <Button 
                   size="lg" 
                   className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-4 text-lg font-semibold rounded-full transition-all duration-300 transform hover:scale-105"
+                  onClick={() => window.location.href = '/tryon'}
                 >
                   <Download className="mr-2 h-5 w-5" />
-                  Download App
+                  Try It Now
                 </Button>
                 <Button 
                   size="lg" 
