@@ -327,13 +327,25 @@ async def virtual_tryon(request: TryOnRequest):
             try:
                 images = await scrape_clothing_images(request.clothing_url)
                 if not images:
-                    raise HTTPException(status_code=400, detail="No clothing images found at the provided URL")
+                    # Provide helpful fallback message
+                    raise HTTPException(
+                        status_code=400, 
+                        detail="No suitable clothing images found at the URL. Try using a direct image upload or a different product URL."
+                    )
                 
                 # Convert first image to base64
                 clothing_image_b64 = convert_image_to_base64(images[0]['url'])
+                logger.info(f"Successfully processed clothing from URL: {images[0]['url']}")
+                
+            except HTTPException as e:
+                # Re-raise HTTP exceptions
+                raise e
             except Exception as e:
                 logger.error(f"Error processing clothing URL: {e}")
-                raise HTTPException(status_code=400, detail="Failed to process clothing from URL")
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Failed to process clothing from URL. The website might be blocking access or the URL might not contain suitable images. Try uploading the image directly instead."
+                )
         
         elif request.clothing_image:
             if not validate_image_base64(request.clothing_image):
