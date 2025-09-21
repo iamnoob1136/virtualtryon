@@ -22,7 +22,7 @@ const LandingPage = () => {
             <a href="#how-it-works" className="text-gray-600 hover:text-purple-600 transition-colors">How it Works</a>
             <a href="#download" className="text-gray-600 hover:text-purple-600 transition-colors">Download</a>
           </div>
-          <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white" onClick={() => window.location.href = '/tryon'}>
+          <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white" onClick={() => navigate('/tryon')}>
             Try It Now
           </Button>
         </div>
