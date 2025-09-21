@@ -92,14 +92,22 @@ async def get_status_checks():
 def validate_image_base64(base64_str: str) -> bool:
     """Validate if the base64 string is a valid image"""
     try:
+        # Remove data URL prefix if present
         if base64_str.startswith('data:image'):
             base64_str = base64_str.split(',')[1]
         
         image_data = base64.b64decode(base64_str)
         image = Image.open(io.BytesIO(image_data))
-        # Check if it's a valid image format
+        
+        # Check if it's a valid image format and reasonable size
         if image.format not in ['JPEG', 'PNG', 'JPG']:
             return False
+        
+        # Check image dimensions are reasonable
+        width, height = image.size
+        if width < 50 or height < 50 or width > 4000 or height > 4000:
+            return False
+            
         return True
     except Exception as e:
         logger.error(f"Image validation error: {e}")
@@ -108,12 +116,33 @@ def validate_image_base64(base64_str: str) -> bool:
 def convert_image_to_base64(image_url: str) -> str:
     """Download image from URL and convert to base64"""
     try:
-        response = requests.get(image_url, timeout=10)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        response = requests.get(image_url, timeout=15, headers=headers)
         response.raise_for_status()
         
+        # Process the image to ensure it's in a good format
         image_data = response.content
-        base64_str = base64.b64encode(image_data).decode('utf-8')
+        image = Image.open(io.BytesIO(image_data))
+        
+        # Convert to RGB if necessary and resize if too large
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+        
+        # Resize if too large (keep aspect ratio)
+        max_size = 1024
+        if max(image.size) > max_size:
+            image.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+        
+        # Save as JPEG with good quality
+        output = io.BytesIO()
+        image.save(output, format='JPEG', quality=85)
+        output.seek(0)
+        
+        base64_str = base64.b64encode(output.getvalue()).decode('utf-8')
         return base64_str
+        
     except Exception as e:
         logger.error(f"Error converting image to base64: {e}")
         raise HTTPException(status_code=400, detail=f"Failed to process image from URL: {str(e)}")
