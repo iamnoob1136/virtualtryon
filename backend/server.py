@@ -301,6 +301,18 @@ async def generate_virtual_tryon(person_image_b64: str, clothing_image_b64: str)
         # Configure for image generation
         chat.with_model("gemini", "gemini-2.5-flash-image-preview").with_params(modalities=["image", "text"])
         
+        # Ensure images are clean base64 (no data URL prefix)
+        if person_image_b64.startswith('data:image'):
+            person_image_b64 = person_image_b64.split(',')[1]
+        if clothing_image_b64.startswith('data:image'):
+            clothing_image_b64 = clothing_image_b64.split(',')[1]
+        
+        # Validate images before sending to AI
+        if not validate_image_base64(person_image_b64):
+            raise HTTPException(status_code=400, detail="Invalid person image format")
+        if not validate_image_base64(clothing_image_b64):
+            raise HTTPException(status_code=400, detail="Invalid clothing image format")
+        
         # Create the message with both images
         msg = UserMessage(
             text="Create a realistic virtual try-on image by combining these two images: place the clothing item from the second image onto the person in the first image. Make it look natural and realistic, maintaining proper proportions, lighting, and shadows. The result should look like the person is actually wearing the clothing item.",
@@ -318,6 +330,9 @@ async def generate_virtual_tryon(person_image_b64: str, clothing_image_b64: str)
         else:
             raise HTTPException(status_code=500, detail="AI failed to generate try-on image")
             
+    except HTTPException as e:
+        # Re-raise HTTP exceptions
+        raise e
     except Exception as e:
         logger.error(f"Error generating virtual try-on: {e}")
         raise HTTPException(status_code=500, detail=f"Virtual try-on generation failed: {str(e)}")
