@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 
 const LandingPage = () => {
   const [activeStep, setActiveStep] = useState(1);
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-white">
