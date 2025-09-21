@@ -430,7 +430,8 @@ const TryOnPage = () => {
                 <ul className="text-sm text-blue-800 space-y-1">
                   <li>• Use clear, well-lit photos with good contrast</li>
                   <li>• Face the camera directly for better fitting</li>
-                  <li>• Choose clothing images with clear visibility</li>
+                  <li>• For URLs: Use direct product pages (not search results)</li>
+                  <li>• If URL fails: Save the clothing image and upload directly</li>
                   <li>• Avoid busy backgrounds in your photos</li>
                 </ul>
               </div>
