@@ -298,12 +298,50 @@ async def scrape_clothing(request: ClothingScrapeRequest):
     """Scrape clothing images from a product URL"""
     try:
         images = await scrape_clothing_images(request.url)
-        return {"success": True, "images": images}
+        return {"success": True, "images": images, "count": len(images)}
     except HTTPException as e:
         raise e
     except Exception as e:
         logger.error(f"Unexpected error in scrape_clothing: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+@api_router.post("/test-url")
+async def test_url(request: ClothingScrapeRequest):
+    """Test URL accessibility and basic scraping"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        
+        response = requests.get(request.url, timeout=10, headers=headers)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        all_imgs = soup.find_all('img')
+        total_images = len(all_imgs)
+        
+        sample_images = []
+        for img in all_imgs[:5]:
+            src = img.get('src') or img.get('data-src')
+            if src:
+                sample_images.append({
+                    'src': src,
+                    'alt': img.get('alt', 'No alt text')
+                })
+        
+        return {
+            "success": True,
+            "status_code": response.status_code,
+            "total_images": total_images,
+            "sample_images": sample_images,
+            "url_accessible": True
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "url_accessible": False
+        }
 
 @api_router.post("/virtual-tryon")
 async def virtual_tryon(request: TryOnRequest):
